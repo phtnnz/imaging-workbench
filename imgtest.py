@@ -20,6 +20,7 @@
 
 import sys
 import argparse
+import os
 
 # The following libs must be installed with pip
 from PIL import Image
@@ -38,7 +39,52 @@ NAME    = "imgtest"
 
 # Command line options
 class Options:
-    pass
+    img_list = None             # -i --img-list
+
+
+
+def process_dir(dir: str):
+    img_files = [f for f in os.listdir(dir) if f.endswith(".jpg") or f.endswith(".tif")]
+    ic(img_files)
+
+    # For linear regression of mean/median value
+    x_list = []
+    y_list = []
+
+    # ... the action starts here ...
+    for idx, img_file in enumerate(img_files):
+        idx += 1    # 1 ... n
+        if Options.img_list and not idx in Options.img_list:
+            continue
+
+        file = os.path.join(dir, img_file)
+        verbose(f"loading [{idx}] {file=}")
+        with Image.open(file) as img:
+            img.load()
+            ic(img)
+            # img.show()
+            data = np.array(img)
+            # ic(data)
+            ic(data.mean(), np.median(data), data.min(), data.max())
+            x_list.append(idx)
+            y_list.append(data.mean())
+
+    ic(x_list, y_list)
+    x = np.array(x_list)
+    y = np.array(y_list)
+    A = np.vstack([x, np.ones(len(x))]).T
+    m, c = np.linalg.lstsq(A, y)[0]
+    ic(m, c)
+
+    mean_target = m*x + c
+    ic(mean_target)
+
+
+
+# Hack from https://stackoverflow.com/questions/6405208/how-to-convert-numeric-string-ranges-to-a-list-in-python
+def str_to_list(s):
+    return sum(((list(range(*[int(j) + k for k,j in enumerate(i.split('-'))]))
+         if '-' in i else [int(i)]) for i in s.split(',')), [])
 
 
 
@@ -49,7 +95,8 @@ def main():
         epilog      = "Version " + VERSION + " / " + AUTHOR)
     arg.add_argument("-v", "--verbose", action="store_true", help="verbose messages")
     arg.add_argument("-d", "--debug", action="store_true", help="more debug messages")
-    arg.add_argument("image", nargs="+", help="image filename")
+    arg.add_argument("-i", "--img-list", help="index list of images to process")
+    arg.add_argument("directory", nargs="+", help="image directory")
 
     args = arg.parse_args()
 
@@ -60,17 +107,13 @@ def main():
         verbose.set_prog(NAME)
         verbose.enable()
     # ... more options ...
+    if args.img_list:
+        Options.img_list = str_to_list(args.img_list)
+    verbose("img list =", Options.img_list)
         
-    # ... the action starts here ...
-    for file in args.image:
-        verbose(f"loading {file=}")
-        with Image.open(file) as img:
-            img.load()
-            ic(img)
-            # img.show()
-            data = np.array(img)
-            # ic(data)
-            ic(data.mean(), np.median(data), data.min(), data.max())
+    for dir in args.directory:
+        process_dir(dir)
+
 
 
 if __name__ == "__main__":
