@@ -1,6 +1,6 @@
 # Astropy-Workbench
 
-Python Imaging Libraries Scripts
+Python Image Processing Scripts
 
 Copyright 2024 Martin Junius
 
@@ -19,5 +19,5 @@ limitations under the License.
 
 ## About
 
-This is just my personal playground for working with the Python imaging libraries,
+This is just my personal playground for working with the Python imaging libraries and numpy,
 not necessarily usable for anyone else.
