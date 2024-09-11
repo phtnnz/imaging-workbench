@@ -25,6 +25,8 @@ import os
 # The following libs must be installed with pip
 from PIL import Image
 import numpy as np
+from numpy.polynomial import Polynomial
+
 from icecream import ic
 # Disable debugging
 ic.disable()
@@ -51,7 +53,8 @@ def process_dir(dir: str):
     x_list = []
     y_list = []
 
-    # ... the action starts here ...
+    # Get mean values from all images
+    ic("--- mean values ---")
     for idx, img_file in enumerate(img_files):
         idx += 1    # 1 ... n
         if Options.img_list and not idx in Options.img_list:
@@ -66,18 +69,54 @@ def process_dir(dir: str):
             data = np.array(img)
             # ic(data)
             ic(data.mean(), np.median(data), data.min(), data.max())
+            # x = index, y = mean value
             x_list.append(idx)
-            y_list.append(data.mean())
+            y_list.append(np.median(data))
 
+    # Compute regression and target mean values
+    ic("--- regression ---")
     ic(x_list, y_list)
     x = np.array(x_list)
     y = np.array(y_list)
     A = np.vstack([x, np.ones(len(x))]).T
     m, c = np.linalg.lstsq(A, y)[0]
     ic(m, c)
+    med_target = m*x + c
+    ic(med_target)
 
-    mean_target = m*x + c
-    ic(mean_target)
+    # Poly fit see
+    # https://stackoverflow.com/questions/18767523/fitting-data-with-numpy
+    # https://numpy.org/doc/stable/reference/generated/numpy.polynomial.polynomial.Polynomial.html
+
+    # Process all images
+    ic("--- adjust image values ---")
+    for idx, img_file in enumerate(img_files):
+        idx += 1    # 1 ... n
+        if Options.img_list and not idx in Options.img_list:
+            continue
+
+        file = os.path.join(dir, img_file)
+        verbose(f"loading [{idx}] {file=}")
+        with Image.open(file) as img:
+            img.load()
+            ic(img)
+            data = np.array(img)
+            med  = np.median(data)
+            med1 = med_target[idx-1]
+            ic(med, med1)
+            # data to fit
+            x = [0, med, 255]
+            y = [0, med1, 255]
+            poly = Polynomial.fit(x, y, deg=2)
+            ic(poly)
+            ic(poly(med))
+            data = poly(data).astype(np.uint8)
+            med2 = np.median(data)
+            ic(med2)
+            verbose(f"  median: orig={med:.0f} target={med1:.3f} new={med2:.0f}")
+            # break
+
+    ic("--- end ---")
 
 
 
