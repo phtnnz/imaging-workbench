@@ -42,6 +42,15 @@ NAME    = "imgtest"
 # Command line options
 class Options:
     img_list = None             # -i --img-list
+    output   = "tmp"            # -o --output
+
+
+
+def write_image(idx: int, data: np.array, info: dict):
+    file = os.path.join(Options.output, f"img{idx:04d}.jpg")
+    img = Image.fromarray(data, "RGB")
+    verbose(f"writing [{idx}] {file}")
+    img.save(file, quality=90, icc_profile=info.get("icc_profile"), exif=info.get("exif"))
 
 
 
@@ -61,7 +70,7 @@ def process_dir(dir: str):
             continue
 
         file = os.path.join(dir, img_file)
-        verbose(f"loading [{idx}] {file=}")
+        verbose(f"loading [{idx}] {file}")
         with Image.open(file) as img:
             img.load()
             ic(img)
@@ -96,10 +105,11 @@ def process_dir(dir: str):
             continue
 
         file = os.path.join(dir, img_file)
-        verbose(f"loading [{idx}] {file=}")
+        verbose(f"loading [{idx}] {file}")
         with Image.open(file) as img:
             img.load()
             ic(img)
+            ic(img.info)
             data = np.array(img)
             med  = np.median(data)
             med1 = med_target[idx-1]
@@ -114,6 +124,9 @@ def process_dir(dir: str):
             med2 = np.median(data)
             ic(med2)
             verbose(f"  median: orig={med:.0f} target={med1:.3f} new={med2:.0f}")
+
+            # write to new image file
+            write_image(idx, data, img.info)
             # break
 
     ic("--- end ---")
@@ -135,6 +148,7 @@ def main():
     arg.add_argument("-v", "--verbose", action="store_true", help="verbose messages")
     arg.add_argument("-d", "--debug", action="store_true", help="more debug messages")
     arg.add_argument("-i", "--img-list", help="index list of images to process")
+    arg.add_argument("-o", "--output-dir", help=f"output directory (default {Options.output})")
     arg.add_argument("directory", nargs="+", help="image directory")
 
     args = arg.parse_args()
@@ -149,7 +163,10 @@ def main():
     if args.img_list:
         Options.img_list = str_to_list(args.img_list)
     verbose("img list =", Options.img_list)
-        
+    if args.output_dir:
+        Options.output = args.output_dir
+    verbose("output dir =", Options.output)        
+
     for dir in args.directory:
         process_dir(dir)
 
