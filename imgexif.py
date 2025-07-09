@@ -25,6 +25,7 @@ NAME    = "imgexif"
 import sys
 import argparse
 import os
+import re
 
 # The following libs must be installed with pip
 from PIL import Image, ExifTags
@@ -45,20 +46,32 @@ class Options:
 
 
 
-def process_dir(dir: str):
-    img_files = [f for f in os.listdir(dir) if f.endswith(".jpg") or f.endswith(".tif")]
+def process_dir(dir: str) -> None:
+    verbose(f"processing {dir=}")
+    img_files = [f for f in os.listdir(dir) if f.lower().endswith(".jpg") or f.lower().endswith(".tif")]
     ic(img_files)
+
+    for f in img_files:
+        filename = os.path.join(dir, f)
+        process_image(filename)
 
 
 
 def process_image(filename: str) -> None:
     verbose(f"processing image {filename}")
 
+    # Sequence/page number
+    m = re.search(r'(\d\d+)', filename)
+    seq = int(m.group(1)) if m else 0
+    verbose(f"{seq=}")
+
+    # Open image
     with Image.open(filename) as img:
         ic(img)
+
+        # EXIF
         exif = img.getexif()
         ic(exif)
-
         if exif:
             for k, v in exif.items():
                 tag = ExifTags.TAGS.get(k)
@@ -80,26 +93,24 @@ def process_image(filename: str) -> None:
         else:
             warning(f"no EXIF information")
 
+        # XMP
         xmp = img.getxmp()
-        # xmp["xmpmeta"]["RDF"]["Description"][<FIELD>]
-        country = xmp["xmpmeta"]["RDF"]["Description"]["Country"]
-        state = xmp["xmpmeta"]["RDF"]["Description"]["State"]
-        city = xmp["xmpmeta"]["RDF"]["Description"]["City"]
+        xmp_keys = xmp["xmpmeta"]["RDF"]["Description"].keys()
+        ic(xmp_keys)
+        # country = xmp["xmpmeta"]["RDF"]["Description"]["Country"]
+        # state = xmp["xmpmeta"]["RDF"]["Description"]["State"]
+        # city = xmp["xmpmeta"]["RDF"]["Description"]["City"]
+        title = xmp["xmpmeta"]["RDF"]["Description"]["title"]["Alt"]["li"]["text"]
         # sub = xmp["xmpmeta"]["RDF"]["Description"]["Sub-location"]
-        verbose("fields:")
-        verbose(f"{country=} {state=} {city=}")
+        # verbose(f"{country=} {state=} {city=} {title=}")
+        verbose(f"{title=}")
+        print(f"{seq}\t{title}")
 
-        # IPTC???
+        # IPTC
         iptc = IptcImagePlugin.getiptcinfo(img)
         ic(iptc)
         # Decode???
-
-
-
-# Hack from https://stackoverflow.com/questions/6405208/how-to-convert-numeric-string-ranges-to-a-list-in-python
-def str_to_list(s):
-    return sum(((list(range(*[int(j) + k for k,j in enumerate(i.split('-'))]))
-         if '-' in i else [int(i)]) for i in s.split(',')), [])
+        # See https://github.com/james-see/iptcinfo3/blob/master/iptcinfo3.py
 
 
 
