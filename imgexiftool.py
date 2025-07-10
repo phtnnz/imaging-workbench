@@ -22,13 +22,15 @@ VERSION = "0.0 / 2025-07-07"
 AUTHOR  = "Martin Junius"
 NAME    = "imgexiftool"
 
+EXIFTOOL_EXE = "c:/tools/exiftool/exiftool.exe"
+
 import sys
 import argparse
 import os
 import re
 
 # The following libs must be installed with pip
-from exiftool import ExifTool, ExifToolHelper
+from exiftool import ExifToolHelper
 
 from icecream import ic
 # Disable debugging
@@ -40,13 +42,7 @@ from verbose import verbose, warning, error
 
 # Command line options
 class Options:
-    img_list = None             # -i --img-list
-    output   = "tmp"            # -o --output
-
-
-
-# Global exiftool object
-EXIFTOOL_EXE = "c:/tools/exiftool/exiftool.exe"
+    pass
 
 
 
