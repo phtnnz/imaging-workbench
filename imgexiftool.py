@@ -17,8 +17,10 @@
 # ChangeLog
 # Version 0.0 / 2025-07-07
 #       Test PyExifTool handling
+# Version 0.1 / 2025-07-10
+#       Options --get-list, --get-title to retrieve some meta data
 
-VERSION = "0.0 / 2025-07-07"
+VERSION = "0.1 / 2025-07-10"
 AUTHOR  = "Martin Junius"
 NAME    = "imgexiftool"
 
@@ -42,7 +44,9 @@ from verbose import verbose, warning, error
 
 # Command line options
 class Options:
-    pass
+    keys = [ "XMP:CountryCode", "XMP:State", "XMP:City", "XMP:Location" ]
+    get_list = False        # --get-list
+    get_title = False        # --get-title
 
 
 
@@ -68,10 +72,18 @@ def process_image(exiftool: ExifToolHelper, filename: str) -> None:
     # Meta data
     for metadata in exiftool.get_metadata(filename):
         for k, v in metadata.items():
-            verbose(f"  {k} = {v}")
-        title = metadata.get("XMP:Title")
-        if title:
-            print(f"{seq}\t{title}")
+            if k in Options.keys:
+                verbose(f"  {k} = {v}")
+
+        if Options.get_title:
+            title = metadata.get("XMP:Title")
+            if title:
+                print(f"{seq}\t{title}")
+
+        if Options.get_list:
+            data = [ metadata.get(k) or "n/a" for k in Options.keys ]
+            if data:
+                print(seq, ", ".join(data), sep="\t")
 
 
 
@@ -82,6 +94,8 @@ def main():
         epilog      = "Version " + VERSION + " / " + AUTHOR)
     arg.add_argument("-v", "--verbose", action="store_true", help="verbose messages")
     arg.add_argument("-d", "--debug", action="store_true", help="more debug messages")
+    arg.add_argument("--get-list", action="store_true", help="get meta data list, default: "+", ".join(Options.keys))
+    arg.add_argument("--get-title", action="store_true", help="get meta data: XMP:Title")
     arg.add_argument("image", nargs="+", help="image file or directory")
 
     args = arg.parse_args()
@@ -92,6 +106,8 @@ def main():
     if args.verbose:
         verbose.set_prog(NAME)
         verbose.enable()
+    Options.get_list = args.get_list
+    Options.get_title = args.get_title
 
     with ExifToolHelper(executable=EXIFTOOL_EXE) as exiftool:
         for file in args.image:
@@ -99,7 +115,6 @@ def main():
                 process_image(exiftool, file)
             elif os.path.isdir(file):
                 process_dir(exiftool, file)
-
 
 
 if __name__ == "__main__":
