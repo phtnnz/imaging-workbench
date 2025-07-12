@@ -19,12 +19,14 @@
 #       Test PyExifTool handling
 # Version 0.1 / 2025-07-10
 #       Options --get-list, --get-title to retrieve some meta data
+# Version 0.2 / 2025-07-12
+#       Added Options -K --keywords, -n --no-seq
 
-VERSION = "0.1 / 2025-07-10"
+VERSION = "0.2 / 2025-07-12"
 AUTHOR  = "Martin Junius"
 NAME    = "imgexiftool"
 
-EXIFTOOL_EXE = "c:/tools/exiftool/exiftool.exe"
+EXIFTOOL_EXE = "c:/Tools/exiftool/exiftool.exe"
 
 import sys
 import argparse
@@ -45,14 +47,18 @@ from verbose import verbose, warning, error
 # Command line options
 class Options:
     keys = [ "XMP:CountryCode", "XMP:State", "XMP:City", "XMP:Location" ]
+                            # -K --keywords
     get_list = False        # --get-list
-    get_title = False        # --get-title
+    get_title = False       # --get-title
+    no_seq = False          # -n --no-seq
 
 
 
 def process_dir(exiftool: ExifToolHelper, dir: str) -> None:
     verbose(f"processing {dir=}")
-    img_files = [f for f in os.listdir(dir) if f.lower().endswith(".jpg") or f.lower().endswith(".tif")]
+    img_files = [f for f in os.listdir(dir) if  f.lower().endswith(".jpg") or 
+                                                f.lower().endswith(".tif") or
+                                                f.lower().endswith(".xmp")    ]
     ic(img_files)
 
     for f in img_files:
@@ -78,12 +84,18 @@ def process_image(exiftool: ExifToolHelper, filename: str) -> None:
         if Options.get_title:
             title = metadata.get("XMP:Title")
             if title:
-                print(f"{seq}\t{title}")
+                if Options.no_seq:
+                    print(f"{title}")
+                else:
+                    print(f"{seq}\t{title}")
 
         if Options.get_list:
             data = [ metadata.get(k) or "n/a" for k in Options.keys ]
             if data:
-                print(seq, ", ".join(data), sep="\t")
+                if Options.no_seq:
+                    print(", ".join(data), sep="\t")
+                else:
+                    print(seq, ", ".join(data), sep="\t")
 
 
 
@@ -94,6 +106,8 @@ def main():
         epilog      = "Version " + VERSION + " / " + AUTHOR)
     arg.add_argument("-v", "--verbose", action="store_true", help="verbose messages")
     arg.add_argument("-d", "--debug", action="store_true", help="more debug messages")
+    arg.add_argument("-K", "--keywords", help=f"show meta data for KEYWORDS, \"+\" adds")
+    arg.add_argument("-n", "--no-seq", action="store_true", help="don't output sequence number")
     arg.add_argument("--get-list", action="store_true", help="get meta data list, default: "+", ".join(Options.keys))
     arg.add_argument("--get-title", action="store_true", help="get meta data: XMP:Title")
     arg.add_argument("image", nargs="+", help="image file or directory")
@@ -108,6 +122,15 @@ def main():
         verbose.enable()
     Options.get_list = args.get_list
     Options.get_title = args.get_title
+    Options.no_seq = args.no_seq
+    if args.keywords:
+        h = args.keywords
+        if h.startswith("+"):
+            h = h.lstrip("+")
+            h = h.lstrip(",")
+            Options.keys.extend(h.split(","))
+        else:
+            Options.keys = h.split(",")
 
     with ExifToolHelper(executable=EXIFTOOL_EXE) as exiftool:
         for file in args.image:
