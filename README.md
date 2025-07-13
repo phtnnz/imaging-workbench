@@ -2,7 +2,7 @@
 
 Python Image Processing Scripts
 
-Copyright 2024 Martin Junius
+Copyright 2024-2025 Martin Junius
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
