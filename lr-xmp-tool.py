@@ -20,7 +20,7 @@
 
 VERSION     = "0.1 / 2025-07-13"
 AUTHOR      = "Martin Junius"
-NAME        = "imgexiftool"
+NAME        = "lr-xmp-tool"
 DESCRIPTION = "Lightroom Classic XMP manipulation tool"
 
 EXIFTOOL_EXE = "c:/Tools/exiftool/exiftool.exe"
@@ -37,7 +37,12 @@ from icecream import ic
 # Disable debugging
 ic.disable()
 # Local modules
-from verbose import verbose, warning, error
+from verbose import message, verbose, warning, error
+
+
+
+# Relevant keywords
+KEYWORD_KEY_FRAME = "XMP:Label"
 
 
 
@@ -51,16 +56,92 @@ class Options:
     match = None                    # -m --match
     key_frame_label = "Yellow"      # -L --key-frame-label
 
+
+
+def get_seq(filename: str) -> str:
+    """
+    Get sequence number from filename (last min 2 digits match)
+    e.g. 2023-19namibia-207-9628.xmp -> 9628
+
+    :param filename: name
+    :type filename: str
+    :return: sequence number
+    :rtype: str
+    """
+    m = re.findall(r'(\d\d+)', filename)
+    return m[-1] if m else None
+
+
+
+def sort_file_list(files: list) -> list:
+    """
+    Sort file list based on sequence number
+
+    :param files: list of filenames
+    :type files: list
+    :return: list of sorted filenames
+    :rtype: list
+    """
+    files_dict = { get_seq(f): f for f in files }
+    sorted_seq = sorted(files_dict.keys())
+    if "9999" in sorted_seq:
+        # Handle wrap around: 9999 -> 0001
+        last_seq = 0
+        jump_idx = 0
+        for idx, seq in enumerate(sorted_seq):
+            seq = sorted_seq[idx]
+            if int(seq) == last_seq + 1:
+                last_seq = int(seq)
+                continue
+            if jump_idx:
+                error(f"2nd jump in sequence at [{idx}] {last_seq}->{seq}, previous [{jump_idx}]")
+            verbose(f"jump in sequence at [{idx}] {last_seq}->{seq}")
+            jump_idx = idx
+            last_seq = int(seq)
+        # Reshuffle list
+        sorted_seq = sorted_seq[jump_idx: ] + sorted_seq[0:jump_idx]
+
+    verbose(f"{len(sorted_seq)} items in sorted file list")
+    return [ files_dict[seq] for seq in sorted_seq ]
+
+
+
+def find_key_frames(exiftool: ExifToolHelper, files: list, key: str=KEYWORD_KEY_FRAME) -> list:
+    """
+    Find key frames (images with "XMP:Label" == "Yellow")
+
+    :param exiftool: ExifTool instance
+    :type exiftool: ExifToolHelper
+    :param files: sorted list of file names
+    :type files: list
+    :param key: meta data key, defaults to KEYWORD_KEY_FRAME ("XMP:Label")
+    :type key: str, optional
+    :return: list of key frames indices
+    :rtype: list
+    """
+    key_frames = []
+
+    for idx, filename in enumerate(files):
+        for metadata in exiftool.get_metadata(filename):
+            label = metadata.get(KEYWORD_KEY_FRAME)
+            if label and label == Options.key_frame_label:
+                verbose(f"key frame at [{idx}] {KEYWORD_KEY_FRAME}={Options.key_frame_label}")
+                key_frames.append(idx)
+
+    return key_frames
+
+
+
 def process_dir(exiftool: ExifToolHelper, dir: str) -> None:
     verbose(f"processing {dir=}")
-    img_files = [f for f in os.listdir(dir) if  f.lower().endswith(".jpg") or 
-                                                f.lower().endswith(".tif") or
-                                                f.lower().endswith(".xmp")    ]
-    ic(img_files)
-
-    for f in img_files:
-        filename = os.path.join(dir, f)
-        process_image(exiftool, filename)
+    img_files = sort_file_list([f for f in os.listdir(dir) 
+                                if  f.lower().endswith(".jpg") or 
+                                    f.lower().endswith(".tif") or
+                                    f.lower().endswith(".xmp")    ])
+    img_files_full_path = [ os.path.join(dir, f) for f in img_files]
+    # print(img_files_full_path)
+    key_frames = find_key_frames(exiftool, img_files_full_path)
+    ic(key_frames)
 
 
 
@@ -120,14 +201,17 @@ def main():
         else:
             Options.keys = h.split(",")
 
-    with ExifToolHelper(executable=EXIFTOOL_EXE) as exiftool:
-        for file in args.image:
-            if os.path.isfile(file):
-                process_image(exiftool, file)
-            elif os.path.isdir(file):
-                process_dir(exiftool, file)
-            else:
-                warning(f"{file}: no such file or directory")
+    try:
+        with ExifToolHelper(executable=EXIFTOOL_EXE) as exiftool:
+            for file in args.image:
+                if os.path.isfile(file):
+                    process_image(exiftool, file)
+                elif os.path.isdir(file):
+                    process_dir(exiftool, file)
+                else:
+                    warning(f"{file}: no such file or directory")
+    except KeyboardInterrupt:
+        message("Cancelled by ^C")
 
 
 if __name__ == "__main__":
