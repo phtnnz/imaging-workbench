@@ -29,6 +29,7 @@ import sys
 import argparse
 import os
 import re
+from itertools import pairwise
 
 # The following libs must be installed with pip
 from exiftool import ExifToolHelper
@@ -48,14 +49,13 @@ KEYWORD_KEY_FRAME = "XMP:Label"
 
 # Command line options
 class Options:
-    keys = [ "XMP:CountryCode", "XMP:State", "XMP:City", "XMP:Location" ]
+    keys = [ "XMP:Exposure2012" ]
                                     # -K --keywords
-    get_list = False                # --get-list
-    get_title = False               # --get-title
+    list = False                    # -l --list
     all = False                     # -a --all
     match = None                    # -m --match
     key_frame_label = "Yellow"      # -L --key-frame-label
-
+    interpolate = False             # -I --interpolate
 
 
 def get_seq(filename: str) -> str:
@@ -133,6 +133,13 @@ def find_key_frames(exiftool: ExifToolHelper, files: list, key: str=KEYWORD_KEY_
 
 
 
+def process_key_frames(exiftool: ExifToolHelper, files: list, idx1: int, idx2: int) -> None:
+    verbose(f"processing key frame pair [{idx1}:{idx2}]")
+
+    # Interpolate exposure
+
+
+
 def process_dir(exiftool: ExifToolHelper, dir: str) -> None:
     verbose(f"processing {dir=}")
     img_files = sort_file_list([f for f in os.listdir(dir) 
@@ -141,29 +148,31 @@ def process_dir(exiftool: ExifToolHelper, dir: str) -> None:
                                     f.lower().endswith(".xmp")    ])
     img_files_full_path = [ os.path.join(dir, f) for f in img_files]
     # print(img_files_full_path)
-    key_frames = find_key_frames(exiftool, img_files_full_path)
-    ic(key_frames)
+
+    # List meta data only
+    if Options.list:
+        for filename in img_files_full_path:
+            process_image(exiftool, filename)
+
+    # Process meta data and interpolate numeric values
+    if Options.interpolate:
+        key_frames = find_key_frames(exiftool, img_files_full_path)
+        ic(key_frames)
+
+        for idx1, idx2 in pairwise(key_frames):
+            ic(idx1, idx2)
+            process_key_frames(exiftool, img_files_full_path, idx1, idx2)
 
 
 
 def process_image(exiftool: ExifToolHelper, filename: str) -> None:
-    verbose(f"processing image {filename}")
+    message(f"_FILE: {filename}")
 
     # Meta data
     for metadata in exiftool.get_metadata(filename):
         for k, v in metadata.items():
             if Options.all or (Options.match and Options.match in k) or k in Options.keys:
-                verbose(f"  {k} = {v}")
-
-        if Options.get_title:
-            title = metadata.get("XMP:Title")
-            if title:
-                print(f"{title}")
-
-        if Options.get_list:
-            data = [ metadata.get(k) or "n/a" for k in Options.keys ]
-            if data:
-                print(", ".join(data), sep="\t")
+                message(f"{k}: {v}")
 
 
 
@@ -174,11 +183,11 @@ def main():
         epilog      = "Version " + VERSION + " / " + AUTHOR)
     arg.add_argument("-v", "--verbose", action="store_true", help="verbose messages")
     arg.add_argument("-d", "--debug", action="store_true", help="more debug messages")
-    arg.add_argument("-K", "--keywords", help=f"show meta data for KEYWORDS, \"+\" adds")
+    arg.add_argument("-l", "--list", action="store_true", help="list meta data, default: "+", ".join(Options.keys))
     arg.add_argument("-a", "--all", action="store_true", help="output all meta data")
     arg.add_argument("-m", "--match", help="output meta data keywords containing MATCH")
-    arg.add_argument("--get-list", action="store_true", help="get meta data list, default: "+", ".join(Options.keys))
-    arg.add_argument("--get-title", action="store_true", help="get meta data: XMP:Title")
+    arg.add_argument("-k", "--keywords", help=f"use meta data KEYWORDS, \"+\" adds")
+    arg.add_argument("-i", "--interpolate", action="store_true", help="interpolate numeric meta data values for KEYWORDS")
     arg.add_argument("image", nargs="+", help="image file or directory")
 
     args = arg.parse_args()
@@ -189,10 +198,10 @@ def main():
     if args.verbose:
         verbose.set_prog(NAME)
         verbose.enable()
-    Options.get_list = args.get_list
-    Options.get_title = args.get_title
+    Options.list = args.list
     Options.all = args.all
     Options.match = args.match
+    Options.interpolate = args.interpolate
     if args.keywords:
         h = args.keywords
         if h.startswith("+"):
@@ -201,6 +210,7 @@ def main():
             Options.keys.extend(h.split(","))
         else:
             Options.keys = h.split(",")
+            verbose(f"keywords {",".join(Options.keys)}")
 
     try:
         with ExifToolHelper(executable=EXIFTOOL_EXE) as exiftool:
