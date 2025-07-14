@@ -95,7 +95,7 @@ def sort_file_list(files: list) -> list:
                 continue
             if jump_idx:
                 error(f"2nd jump in sequence at [{idx}] {last_seq}->{seq}, previous [{jump_idx}]")
-            verbose(f"jump in sequence at [{idx}] {last_seq}->{seq}")
+            verbose(f"jump in sequence at [{idx}] {last_seq}->{seq}, reshuffle needed")
             jump_idx = idx
             last_seq = int(seq)
         # Reshuffle list
@@ -133,10 +133,45 @@ def find_key_frames(exiftool: ExifToolHelper, files: list, key: str=KEYWORD_KEY_
 
 
 
+def _2float(v) -> float:
+    try:
+        v = float(v)
+    except ValueError:
+        pass
+    return v
+
+
+def _2fstr(v: float) -> str:
+    return f"{v:+.2f}"
+
+
+def _interpolate(idx1: int, idx2: int, i: int, v1: float, v2: float) -> float:
+    return v1 + (v2 - v1)*(i - idx1)/(idx2 - idx1)
+
+
 def process_key_frames(exiftool: ExifToolHelper, files: list, idx1: int, idx2: int) -> None:
     verbose(f"processing key frame pair [{idx1}:{idx2}]")
 
-    # Interpolate exposure
+    frame1 = {}
+    frame2 = {}
+
+    # Interpolate meta data for keywords
+    for metadata in exiftool.get_tags(files[idx1], Options.keys):
+        for k, v in metadata.items():
+            frame1[k] = _2float(v)
+    for metadata in exiftool.get_tags(files[idx2], Options.keys):
+        for k, v in metadata.items():
+            frame2[k] = _2float(v)
+    ic(frame1, frame2)    
+
+    for k in frame1.keys():
+        v1 = frame1[k]
+        v2 = frame2[k]
+        if isinstance(v1, float) and isinstance(v2, float):
+            for i in range(idx1, idx2):
+                v = _2fstr(_interpolate(idx1, idx2, i, v1, v2))
+                ic(idx1, idx2, i, v1, v2, v)
+                # exiftool.set_tags(files[i], tags={k: v})
 
 
 
