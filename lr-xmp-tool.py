@@ -17,8 +17,10 @@
 # ChangeLog
 # Version 0.1 / 2025-07-13
 #       Lightroom Classic XMP manipulation tool, based on imgexiftool 0.2
+# Version 0.2 / 2025-07-14
+#       Interpolate and change numeric meta data
 
-VERSION     = "0.1 / 2025-07-13"
+VERSION     = "0.2 / 2025-07-14"
 AUTHOR      = "Martin Junius"
 NAME        = "lr-xmp-tool"
 DESCRIPTION = "Lightroom Classic XMP manipulation tool"
@@ -56,6 +58,8 @@ class Options:
     match = None                    # -m --match
     key_frame_label = "Yellow"      # -L --key-frame-label
     interpolate = False             # -I --interpolate
+    no_change = False               # -n --no-change
+
 
 
 def get_seq(filename: str) -> str:
@@ -170,8 +174,10 @@ def process_key_frames(exiftool: ExifToolHelper, files: list, idx1: int, idx2: i
         if isinstance(v1, float) and isinstance(v2, float):
             for i in range(idx1, idx2):
                 v = _2fstr(_interpolate(idx1, idx2, i, v1, v2))
-                ic(idx1, idx2, i, v1, v2, v)
-                # exiftool.set_tags(files[i], tags={k: v})
+                ic(idx1, idx2, i, v1, v2, k, v)
+                verbose(f"setting [{i}] {k}={v}")
+                if not Options.no_change:
+                    exiftool.set_tags(files[i], tags={k: v})
 
 
 
@@ -223,6 +229,7 @@ def main():
     arg.add_argument("-m", "--match", help="output meta data keywords containing MATCH")
     arg.add_argument("-k", "--keywords", help=f"use meta data KEYWORDS, \"+\" adds")
     arg.add_argument("-i", "--interpolate", action="store_true", help="interpolate numeric meta data values for KEYWORDS")
+    arg.add_argument("-n", "--no-change", action="store_true", help="dry run, no change to meta data")
     arg.add_argument("image", nargs="+", help="image file or directory")
 
     args = arg.parse_args()
@@ -237,6 +244,7 @@ def main():
     Options.all = args.all
     Options.match = args.match
     Options.interpolate = args.interpolate
+    Options.no_change = args.no_change
     if args.keywords:
         h = args.keywords
         if h.startswith("+"):
