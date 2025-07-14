@@ -68,7 +68,7 @@ def get_seq(filename: str) -> str:
     :return: sequence number
     :rtype: str
     """
-    m = re.findall(r'(\d\d+)', filename)
+    m = re.findall(r'(\d\d\d+)', filename)
     return m[-1] if m else None
 
 
@@ -122,7 +122,8 @@ def find_key_frames(exiftool: ExifToolHelper, files: list, key: str=KEYWORD_KEY_
     key_frames = []
 
     for idx, filename in enumerate(files):
-        for metadata in exiftool.get_metadata(filename):
+        for metadata in exiftool.get_tags(filename, KEYWORD_KEY_FRAME):
+            ic(metadata)
             label = metadata.get(KEYWORD_KEY_FRAME)
             if label and label == Options.key_frame_label:
                 verbose(f"key frame at [{idx}] {KEYWORD_KEY_FRAME}={Options.key_frame_label}")
