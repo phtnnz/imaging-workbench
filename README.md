@@ -21,3 +21,32 @@ limitations under the License.
 
 This is just my personal playground for working with the Python imaging libraries and numpy,
 not necessarily usable for anyone else.
+
+
+## Lightroom XMP Tool
+
+List and manipulate Lightroom Classic XMP sidecar data
+
+```
+usage: lr-xmp-tool [-h] [-v] [-d] [-l] [-a] [-m MATCH] [-k KEYWORDS] [-i] [-n] image [image ...]
+
+Lightroom Classic XMP manipulation tool
+
+positional arguments:
+  image                 image file or directory
+
+options:
+  -h, --help            show this help message and exit
+  -v, --verbose         verbose messages
+  -d, --debug           more debug messages
+  -l, --list            list meta data, default: XMP:Exposure2012
+  -a, --all             output all meta data
+  -m MATCH, --match MATCH
+                        output meta data keywords containing MATCH
+  -k KEYWORDS, --keywords KEYWORDS
+                        use meta data KEYWORDS, "+" adds
+  -i, --interpolate     interpolate numeric meta data values for KEYWORDS
+  -n, --no-change       dry run, no change to meta data
+
+Version 0.2 / 2025-07-14 / Martin Junius
+```
