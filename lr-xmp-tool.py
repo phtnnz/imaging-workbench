@@ -207,13 +207,15 @@ def process_dir(exiftool: ExifToolHelper, dir: str) -> None:
 
 
 def process_image(exiftool: ExifToolHelper, filename: str) -> None:
-    message(f"_FILE: {filename}")
+    seq = get_seq(filename)
+    verbose(f"[{seq}] _FILE: {filename}")
 
     # Meta data
     for metadata in exiftool.get_metadata(filename):
         for k, v in metadata.items():
             if Options.all or (Options.match and Options.match in k) or k in Options.keys:
-                message(f"{k}: {v}")
+                verbose(f"{k}: {v}")
+                print(f"{seq}\t{v}")
 
 
 
