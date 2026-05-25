@@ -1,7 +1,7 @@
 /activate.bat
 /create-venv.bat
 /OLD
-/tmp
+/tmp*
 /venv
 *.code-workspace
 __pycache__
