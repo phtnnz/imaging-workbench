@@ -47,7 +47,7 @@ from verbose import message, verbose, warning, error
 # Relevant keywords
 KEYWORD_KEY_FRAME = "XMP:Label"
 
-KEYWORDS_CROP = [ "XMP:CropTop", "XMP:CropLeft", "XMP:CropBottom", "XMP:CropRight", "XMP:CropRight" ]
+KEYWORDS_CROP = [ "XMP:CropTop", "XMP:CropLeft", "XMP:CropBottom", "XMP:CropRight", "XMP:CropRight", "XMP:CropAngle" ]
 
 
 
@@ -61,6 +61,7 @@ class Options:
     key_frame_label = "Yellow"      # -L --key-frame-label
     interpolate = False             # -I --interpolate
     no_change = False               # -n --no-change
+    float2 = False                  # -2 --float2
 
 
 
@@ -148,7 +149,7 @@ def _2float(v) -> float:
 
 
 def _2fstr(v: float) -> str:
-    return f"{v:+.2f}"
+    return f"{v:+.2f}" if Options.float2 else f"{v:f}"
 
 
 def _interpolate(idx1: int, idx2: int, i: int, v1: float, v2: float) -> float:
@@ -233,6 +234,7 @@ def main():
     arg.add_argument("-m", "--match", help="output meta data keywords containing MATCH")
     arg.add_argument("-k", "--keywords", help=f"use meta data KEYWORDS, \"+\" adds")
     arg.add_argument("--crop", action="store_true", help="use CropTop/Left/Bottom/Right/Angle keywords")
+    arg.add_argument("-2", "--float2", action="store_true", help="output float numbers as +/-D.DD")
     arg.add_argument("-i", "--interpolate", action="store_true", help="interpolate numeric meta data values for KEYWORDS")
     arg.add_argument("-n", "--no-change", action="store_true", help="dry run, no change to meta data")
     arg.add_argument("image", nargs="+", help="image file or directory")
@@ -250,6 +252,7 @@ def main():
     Options.match = args.match
     Options.interpolate = args.interpolate
     Options.no_change = args.no_change
+    Options.float2 = args.float2
     if args.crop:
         Options.keys = KEYWORDS_CROP
     if args.keywords:
