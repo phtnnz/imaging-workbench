@@ -47,6 +47,8 @@ from verbose import message, verbose, warning, error
 # Relevant keywords
 KEYWORD_KEY_FRAME = "XMP:Label"
 
+KEYWORDS_CROP = [ "XMP:CropTop", "XMP:CropLeft", "XMP:CropBottom", "XMP:CropRight", "XMP:CropRight" ]
+
 
 
 # Command line options
@@ -230,6 +232,7 @@ def main():
     arg.add_argument("-a", "--all", action="store_true", help="output all meta data")
     arg.add_argument("-m", "--match", help="output meta data keywords containing MATCH")
     arg.add_argument("-k", "--keywords", help=f"use meta data KEYWORDS, \"+\" adds")
+    arg.add_argument("--crop", action="store_true", help="use CropTop/Left/Bottom/Right/Angle keywords")
     arg.add_argument("-i", "--interpolate", action="store_true", help="interpolate numeric meta data values for KEYWORDS")
     arg.add_argument("-n", "--no-change", action="store_true", help="dry run, no change to meta data")
     arg.add_argument("image", nargs="+", help="image file or directory")
@@ -247,6 +250,8 @@ def main():
     Options.match = args.match
     Options.interpolate = args.interpolate
     Options.no_change = args.no_change
+    if args.crop:
+        Options.keys = KEYWORDS_CROP
     if args.keywords:
         h = args.keywords
         if h.startswith("+"):
